@@ -18,12 +18,17 @@ function LoginContent() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
-  // Show session expired toast
+  // Show session expired toast (once) and clean up the URL
   useEffect(() => {
     if (searchParams.get("expired") === "true") {
       toast.error("Session expired. Please log in again.");
+      // Remove the query param so it doesn't re-fire
+      const url = new URL(window.location.href);
+      url.searchParams.delete("expired");
+      window.history.replaceState({}, "", url.pathname);
     }
-  }, [searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Redirect if already authenticated
   useEffect(() => {

@@ -35,6 +35,13 @@ export class ApiError extends Error {
 const TOKEN_KEY = "aegis_token";
 const USER_KEY = "aegis_user";
 
+// Flag to suppress 401 redirect during login / session init
+let _suppressAuthRedirect = false;
+
+export function suppressAuthRedirect(suppress: boolean): void {
+  _suppressAuthRedirect = suppress;
+}
+
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(TOKEN_KEY);
@@ -89,8 +96,8 @@ async function request<T>(
   if (json.status === "error") {
     const errorResponse = json as APIErrorResponse;
 
-    // 401 → clear token and redirect
-    if (res.status === 401) {
+    // 401 → clear token and redirect (unless suppressed during login/init)
+    if (res.status === 401 && !_suppressAuthRedirect) {
       clearToken();
       if (typeof window !== "undefined") {
         window.location.href = "/login?expired=true";

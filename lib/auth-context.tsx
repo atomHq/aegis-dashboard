@@ -17,6 +17,7 @@ import {
   getStoredUser,
   setStoredUser,
   ApiError,
+  suppressAuthRedirect,
 } from "./api";
 import type {
   User,
@@ -77,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Validate token by fetching tenant
         if (user.tenant_id) {
+          suppressAuthRedirect(true);
           api
             .get<Tenant>(`/api/v1/tenants/${user.tenant_id}`)
             .then((tenant) => {
@@ -95,6 +97,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 isLoading: false,
                 isAuthenticated: false,
               });
+            })
+            .finally(() => {
+              suppressAuthRedirect(false);
             });
         } else {
           setState((prev) => ({ ...prev, isLoading: false }));
@@ -116,36 +121,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (data: LoginRequest): Promise<LoginResponse> => {
-      const response = await api.post<LoginResponse>(
-        "/api/v1/auth/login",
-        data,
-        { skipAuth: true }
-      );
+      suppressAuthRedirect(true);
+      try {
+        const response = await api.post<LoginResponse>(
+          "/api/v1/auth/login",
+          data,
+          { skipAuth: true }
+        );
 
-      setToken(response.token);
-      setStoredUser(response.user);
+        setToken(response.token);
+        setStoredUser(response.user);
 
-      // Fetch tenant info
-      let tenant: Tenant | null = null;
-      if (response.user.tenant_id) {
-        try {
-          tenant = await api.get<Tenant>(
-            `/api/v1/tenants/${response.user.tenant_id}`
-          );
-        } catch {
-          // Non-critical - proceed without tenant
+        // Fetch tenant info
+        let tenant: Tenant | null = null;
+        if (response.user.tenant_id) {
+          try {
+            tenant = await api.get<Tenant>(
+              `/api/v1/tenants/${response.user.tenant_id}`
+            );
+          } catch {
+            // Non-critical - proceed without tenant
+          }
         }
+
+        setState({
+          user: response.user,
+          tenant,
+          token: response.token,
+          isLoading: false,
+          isAuthenticated: true,
+        });
+
+        return response;
+      } finally {
+        suppressAuthRedirect(false);
       }
-
-      setState({
-        user: response.user,
-        tenant,
-        token: response.token,
-        isLoading: false,
-        isAuthenticated: true,
-      });
-
-      return response;
     },
     []
   );
