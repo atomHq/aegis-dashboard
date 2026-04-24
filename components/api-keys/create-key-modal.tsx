@@ -6,7 +6,7 @@ import { useCreateApiKey } from "@/hooks/use-api-keys";
 import { Modal } from "@/components/ui/modal";
 import { ApiError } from "@/lib/api";
 import type { Scope, CreateAPIKeyResponse } from "@/lib/types";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check } from "lucide-react";
 
 const SCOPE_OPTIONS: { value: Scope; label: string; description: string }[] = [
   { value: "secrets:read", label: "secrets:read", description: "Read secret values" },
@@ -103,31 +103,44 @@ export function CreateKeyModal({ isOpen, onClose, onKeyCreated }: CreateKeyModal
           </label>
           {errors.scopes && <p className="text-error text-xs mb-2">{errors.scopes}</p>}
           <div className="space-y-2">
-            {SCOPE_OPTIONS.map((scope) => (
-              <label
-                key={scope.value}
-                htmlFor={`scope-${scope.value}`}
-                className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                  form.scopes.includes(scope.value)
-                    ? "bg-accent-start/5 border-accent-start/20"
-                    : "bg-white/[0.02] border-white/[0.06] hover:border-white/[0.1]"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  id={`scope-${scope.value}`}
-                  checked={form.scopes.includes(scope.value)}
-                  onChange={() => toggleScope(scope.value)}
-                  className="mt-0.5 accent-[var(--accent-start)]"
-                />
-                <div>
-                  <p className="text-sm font-medium font-mono text-text-primary">
-                    {scope.label}
-                  </p>
-                  <p className="text-xs text-text-tertiary">{scope.description}</p>
-                </div>
-              </label>
-            ))}
+            {SCOPE_OPTIONS.map((scope) => {
+              const isChecked = form.scopes.includes(scope.value);
+              return (
+                <label
+                  key={scope.value}
+                  htmlFor={`scope-${scope.value}`}
+                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                    isChecked
+                      ? "bg-accent-start/10 border-accent-start/30"
+                      : "bg-white/[0.02] border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.03]"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    id={`scope-${scope.value}`}
+                    checked={isChecked}
+                    onChange={() => toggleScope(scope.value)}
+                    className="sr-only"
+                  />
+                  {/* Custom checkbox */}
+                  <div
+                    className={`mt-0.5 flex-shrink-0 w-[18px] h-[18px] rounded flex items-center justify-center border transition-all duration-200 ${
+                      isChecked
+                        ? "bg-gradient-to-br from-[var(--accent-start)] to-[var(--accent-end)] border-transparent shadow-[0_0_8px_rgba(99,102,241,0.3)]"
+                        : "border-white/20 bg-white/[0.04]"
+                    }`}
+                  >
+                    {isChecked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium font-mono text-text-primary">
+                      {scope.label}
+                    </p>
+                    <p className="text-xs text-text-tertiary">{scope.description}</p>
+                  </div>
+                </label>
+              );
+            })}
           </div>
         </div>
 
@@ -138,7 +151,7 @@ export function CreateKeyModal({ isOpen, onClose, onKeyCreated }: CreateKeyModal
           <input
             id="key-expires"
             type="date"
-            className="input-field"
+            className="input-field dark-date-input"
             value={form.expires_at}
             onChange={(e) =>
               setForm((prev) => ({ ...prev, expires_at: e.target.value }))
@@ -168,3 +181,4 @@ export function CreateKeyModal({ isOpen, onClose, onKeyCreated }: CreateKeyModal
     </Modal>
   );
 }
+

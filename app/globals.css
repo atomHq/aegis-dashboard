@@ -287,6 +287,21 @@ body {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
+.dark-date-input {
+  color-scheme: dark;
+}
+
+.dark-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.dark-date-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
 /* ============================================
    BUTTON STYLES
    ============================================ */

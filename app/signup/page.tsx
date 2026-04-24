@@ -260,12 +260,12 @@ export default function SignupPage() {
                 <input
                   id="signup-org-slug"
                   type="text"
-                  className={`input-field pl-[4.5rem] ${errors.org_slug ? "error" : ""}`}
+                  className={`input-field pl-[5.25rem] ${errors.org_slug ? "error" : ""}`}
                   placeholder="acme-inc"
                   value={form.org_slug}
                   onChange={(e) => {
                     setSlugManuallyEdited(true);
-                    handleChange("org_slug", e.target.value);
+                    handleChange("org_slug", slugify(e.target.value));
                   }}
                 />
               </div>
