@@ -6,6 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { useAuth, ApiError } from "@/lib/auth-context";
 import { slugify, getPasswordStrength } from "@/lib/utils";
+import { useMemo } from "react";
 import { Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 import { AegisLogo } from "@/components/ui/aegis-logo";
 
@@ -14,7 +15,6 @@ export default function SignupPage() {
   const { signup, isAuthenticated } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
   const [form, setForm] = useState({
     first_name: "",
@@ -22,8 +22,10 @@ export default function SignupPage() {
     email: "",
     password: "",
     org_name: "",
-    org_slug: "",
   });
+
+  // Auto-derive slug from org name
+  const orgSlug = useMemo(() => slugify(form.org_name), [form.org_name]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -32,12 +34,7 @@ export default function SignupPage() {
     if (isAuthenticated) router.push("/dashboard");
   }, [isAuthenticated, router]);
 
-  // Auto-generate slug from org name
-  useEffect(() => {
-    if (!slugManuallyEdited && form.org_name) {
-      setForm((prev) => ({ ...prev, org_slug: slugify(prev.org_name) }));
-    }
-  }, [form.org_name, slugManuallyEdited]);
+
 
   const passwordStrength = getPasswordStrength(form.password);
 
@@ -57,11 +54,6 @@ export default function SignupPage() {
     if (!form.org_name.trim()) newErrors.org_name = "Organization name is required";
     else if (form.org_name.length < 2)
       newErrors.org_name = "Organization name must be at least 2 characters";
-    if (!form.org_slug.trim()) newErrors.org_slug = "Organization slug is required";
-    else if (form.org_slug.length < 2)
-      newErrors.org_slug = "Slug must be at least 2 characters";
-    else if (!/^[a-z0-9-]+$/.test(form.org_slug))
-      newErrors.org_slug = "Slug can only contain lowercase letters, numbers, and hyphens";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -73,7 +65,7 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
     try {
-      await signup(form);
+      await signup({ ...form, org_slug: orgSlug });
       toast.success("Account created! Check your email for the verification code.");
       router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
     } catch (err) {
@@ -81,7 +73,7 @@ export default function SignupPage() {
         if (err.message.toLowerCase().includes("email")) {
           setErrors({ email: err.message });
         } else if (err.message.toLowerCase().includes("slug")) {
-          setErrors({ org_slug: err.message });
+          setErrors({ org_name: err.message });
         } else {
           toast.error(err.message);
         }
@@ -246,31 +238,6 @@ export default function SignupPage() {
               )}
             </div>
 
-            {/* Org slug */}
-            <div>
-              <label htmlFor="signup-org-slug" className="block text-sm font-medium text-text-secondary mb-1.5">
-                Organization slug
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary text-sm">
-                  aegis.io/
-                </span>
-                <input
-                  id="signup-org-slug"
-                  type="text"
-                  className={`input-field pl-[5.25rem] ${errors.org_slug ? "error" : ""}`}
-                  placeholder="acme-inc"
-                  value={form.org_slug}
-                  onChange={(e) => {
-                    setSlugManuallyEdited(true);
-                    handleChange("org_slug", slugify(e.target.value));
-                  }}
-                />
-              </div>
-              {errors.org_slug && (
-                <p className="text-error text-xs mt-1">{errors.org_slug}</p>
-              )}
-            </div>
 
             {/* Submit */}
             <button
