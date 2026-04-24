@@ -9,10 +9,10 @@ import {
   FolderKanban,
   KeyRound,
   Settings,
-  Shield,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { AegisLogo, AegisLogoIcon } from "@/components/ui/aegis-logo";
 
 const navItems = [
   {
@@ -78,13 +78,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {/* Logo area */}
         <div className="flex items-center h-16 px-4 border-b border-white/[0.06]">
           <Link href="/dashboard" className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center flex-shrink-0">
-              <Shield className="w-4 h-4 text-white" />
-            </div>
-            {!collapsed && (
-              <span className="text-lg font-bold gradient-text truncate">
-                Aegis
-              </span>
+            {collapsed ? (
+              <AegisLogoIcon size={28} className="flex-shrink-0" />
+            ) : (
+              <AegisLogo iconSize={28} textClass="text-lg" />
             )}
           </Link>
         </div>

@@ -10,7 +10,7 @@ import {
   Building2,
   Save,
   Loader2,
-  Shield,
+  FolderKanban,
   Zap,
   Database,
   Gauge,
@@ -196,7 +196,7 @@ export default function SettingsPage() {
 
           <div className="p-4 rounded-lg bg-white/[0.02] border border-white/[0.06]">
             <div className="flex items-center gap-2 mb-2">
-              <Shield className="w-4 h-4 text-text-tertiary" />
+              <FolderKanban className="w-4 h-4 text-text-tertiary" />
               <p className="text-sm text-text-secondary">Max Projects</p>
             </div>
             <p className="text-xl font-bold text-text-primary">

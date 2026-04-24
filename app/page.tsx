@@ -16,6 +16,7 @@ import {
   Layers,
   ChevronRight,
 } from "lucide-react";
+import { AegisLogo, AegisLogoIcon } from "@/components/ui/aegis-logo";
 
 /* ─── Intersection Observer Hook ─── */
 function useReveal() {
@@ -56,7 +57,7 @@ const steps = [
 
 const tiers = [
   { name: "Free", price: "$0", period: "forever", features: ["100 secrets", "5 projects", "60 req/min", "Community support", "Audit logs"], cta: "Get Started Free", highlighted: false },
-  { name: "Pro", price: "$49", period: "/month", features: ["10,000 secrets", "50 projects", "300 req/min", "Priority support", "Advanced audit", "Team management"], cta: "Start Pro Trial", highlighted: true },
+  { name: "Pro", price: "$10", period: "/month", features: ["10,000 secrets", "50 projects", "300 req/min", "Priority support", "Advanced audit", "Team management"], cta: "Start Pro Trial", highlighted: true },
   { name: "Enterprise", price: "Custom", period: "", features: ["Unlimited secrets", "Unlimited projects", "Custom rate limits", "24/7 support", "SSO / SAML", "Dedicated infra", "SLA guarantee"], cta: "Contact Sales", highlighted: false },
 ];
 
@@ -67,10 +68,7 @@ export default function LandingPage() {
       <nav id="landing-nav" className="fixed top-0 inset-x-0 z-50 h-16 border-b border-white/[0.06] bg-bg-primary/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto h-full flex items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center">
-              <Shield className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-lg font-bold gradient-text">Aegis</span>
+            <AegisLogo iconSize={30} textClass="text-lg" />
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm text-text-secondary">
             <a href="#features" className="hover:text-text-primary transition-colors">Features</a>
@@ -254,7 +252,7 @@ $ curl http://localhost:8080/api/v1/projects/{id}/secrets/DATABASE_URL \\
             {tiers.map((tier) => (
               <div
                 key={tier.name}
-                className={`relative rounded-2xl p-7 border transition-all ${
+                className={`relative rounded-2xl p-7 border transition-all flex flex-col ${
                   tier.highlighted
                     ? "bg-accent-start/5 border-accent-start/20 shadow-lg shadow-accent-start/5"
                     : "glass-card-static"
@@ -270,7 +268,7 @@ $ curl http://localhost:8080/api/v1/projects/{id}/secrets/DATABASE_URL \\
                   <span className="text-3xl font-extrabold text-text-primary">{tier.price}</span>
                   {tier.period && <span className="text-sm text-text-tertiary">{tier.period}</span>}
                 </div>
-                <ul className="space-y-3 mb-7">
+                <ul className="space-y-3 mb-7 flex-1">
                   {tier.features.map((f) => (
                     <li key={f} className="flex items-center gap-2.5 text-sm text-text-secondary">
                       <Check className="w-4 h-4 text-success flex-shrink-0" />
@@ -280,7 +278,7 @@ $ curl http://localhost:8080/api/v1/projects/{id}/secrets/DATABASE_URL \\
                 </ul>
                 <Link
                   href="/signup"
-                  className={`w-full block text-center ${tier.highlighted ? "btn-primary" : "btn-secondary"}`}
+                  className={`w-full block text-center mt-auto ${tier.highlighted ? "btn-primary" : "btn-secondary"}`}
                 >
                   {tier.cta}
                 </Link>
@@ -311,10 +309,7 @@ $ curl http://localhost:8080/api/v1/projects/{id}/secrets/DATABASE_URL \\
       <footer className="border-t border-white/[0.06] py-10">
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md gradient-bg flex items-center justify-center">
-              <Shield className="w-3 h-3 text-white" />
-            </div>
-            <span className="text-sm font-semibold gradient-text">Aegis</span>
+            <AegisLogo iconSize={22} textClass="text-sm font-semibold" />
           </div>
           <p className="text-xs text-text-tertiary">
             © {new Date().getFullYear()} Aegis. All rights reserved.

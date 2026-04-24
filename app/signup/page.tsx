@@ -6,7 +6,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { useAuth, ApiError } from "@/lib/auth-context";
 import { slugify, getPasswordStrength } from "@/lib/utils";
-import { Shield, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
+import { AegisLogo } from "@/components/ui/aegis-logo";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -107,10 +108,7 @@ export default function SignupPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold gradient-text">Aegis</span>
+            <AegisLogo iconSize={36} textClass="text-xl" />
           </Link>
           <h1 id="signup-heading" className="text-2xl font-bold text-text-primary">
             Create your account
