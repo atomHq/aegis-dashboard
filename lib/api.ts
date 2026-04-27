@@ -77,13 +77,13 @@ async function request<T>(
   const token = getToken();
   const { skipAuth, ...fetchOptions } = options || {};
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...((fetchOptions?.headers as Record<string, string>) || {}),
-  };
+  const headers = new Headers(fetchOptions?.headers);
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
 
   if (!skipAuth && token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   const res = await fetch(`${API_BASE}${endpoint}`, {
