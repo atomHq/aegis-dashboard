@@ -43,7 +43,8 @@ export type ErrorCode =
   | "VERIFICATION_FAILED"
   | "CREATE_FAILED"
   | "KEY_CREATE_FAILED"
-  | "SECRET_WRITE_FAILED";
+  | "SECRET_WRITE_FAILED"
+  | "UNEXPECTED_RESPONSE";
 
 // --- Domain Models ---
 

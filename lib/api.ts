@@ -5,6 +5,8 @@
 import type {
   APIResponse,
   APIErrorResponse,
+  APISuccessResponse,
+  ErrorCode,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -12,12 +14,12 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 // --- Custom Error ---
 
 export class ApiError extends Error {
-  code: string;
+  code: ErrorCode | string;
   status: number;
   details?: Record<string, unknown>;
 
   constructor(
-    code: string,
+    code: ErrorCode | string,
     message: string,
     status: number,
     details?: Record<string, unknown>
@@ -35,11 +37,31 @@ export class ApiError extends Error {
 const TOKEN_KEY = "aegis_token";
 const USER_KEY = "aegis_user";
 
-// Flag to suppress 401 redirect during login / session init
-let _suppressAuthRedirect = false;
+type UnauthorizedBehavior = "logout" | "throw";
 
-export function suppressAuthRedirect(suppress: boolean): void {
-  _suppressAuthRedirect = suppress;
+interface AuthTeardownOptions {
+  expired?: boolean;
+}
+
+type AuthTeardownHandler = (options?: AuthTeardownOptions) => void;
+
+interface RequestOptions extends RequestInit {
+  skipAuth?: boolean;
+  onUnauthorized?: UnauthorizedBehavior;
+}
+
+let authTeardownHandler: AuthTeardownHandler | null = null;
+
+export function registerAuthTeardownHandler(
+  handler: AuthTeardownHandler
+): () => void {
+  authTeardownHandler = handler;
+
+  return () => {
+    if (authTeardownHandler === handler) {
+      authTeardownHandler = null;
+    }
+  };
 }
 
 export function getToken(): string | null {
@@ -72,10 +94,14 @@ export function setStoredUser(user: object): void {
 
 async function request<T>(
   endpoint: string,
-  options?: RequestInit & { skipAuth?: boolean }
+  options?: RequestOptions
 ): Promise<T> {
   const token = getToken();
-  const { skipAuth, ...fetchOptions } = options || {};
+  const {
+    skipAuth,
+    onUnauthorized = "logout",
+    ...fetchOptions
+  } = options || {};
 
   const headers = new Headers(fetchOptions?.headers);
   if (!headers.has("Content-Type")) {
@@ -91,41 +117,121 @@ async function request<T>(
     headers,
   });
 
-  const json = (await res.json()) as APIResponse<T>;
+  const rawBody =
+    res.status === 204 || res.status === 205 ? "" : await res.text();
+  const contentType = res.headers.get("content-type") || "";
+  const expectsJson =
+    contentType.includes("application/json") || contentType.includes("+json");
 
-  if (json.status === "error") {
-    const errorResponse = json as APIErrorResponse;
+  let parsedBody: unknown = null;
+  let parseFailed = false;
 
-    // 401 → clear token and redirect (unless suppressed during login/init)
-    if (res.status === 401 && !_suppressAuthRedirect) {
-      clearToken();
-      if (typeof window !== "undefined") {
-        window.location.href = "/login?expired=true";
-      }
+  if (rawBody && expectsJson) {
+    try {
+      parsedBody = JSON.parse(rawBody) as APIResponse<T>;
+    } catch {
+      parseFailed = true;
+    }
+  }
+
+  if (isAPIErrorResponse(parsedBody)) {
+    if (res.status === 401 && onUnauthorized === "logout") {
+      handleUnauthorized({ expired: true });
     }
 
     throw new ApiError(
-      errorResponse.error.code,
-      errorResponse.error.message,
+      parsedBody.error.code,
+      parsedBody.error.message,
       res.status,
-      errorResponse.error.details
+      parsedBody.error.details
     );
   }
 
-  return json.data as T;
+  if (res.status === 401 && onUnauthorized === "logout") {
+    handleUnauthorized({ expired: true });
+  }
+
+  if (!res.ok) {
+    throw buildFallbackError(res.status, rawBody);
+  }
+
+  if (!rawBody) {
+    return undefined as T;
+  }
+
+  if (isAPISuccessResponse<T>(parsedBody)) {
+    return parsedBody.data as T;
+  }
+
+  if (parseFailed || expectsJson || rawBody) {
+    throw buildFallbackError(
+      res.status,
+      rawBody,
+      "Received an unexpected response from the server."
+    );
+  }
+
+  return undefined as T;
+}
+
+function handleUnauthorized(options?: AuthTeardownOptions): void {
+  if (authTeardownHandler) {
+    authTeardownHandler(options);
+    return;
+  }
+
+  clearToken();
+  if (typeof window !== "undefined") {
+    window.location.href = options?.expired
+      ? "/login?expired=true"
+      : "/login";
+  }
+}
+
+function buildFallbackError(
+  status: number,
+  rawBody: string,
+  fallbackMessage?: string
+): ApiError {
+  const message =
+    rawBody.trim() || fallbackMessage || "The server returned an invalid response.";
+
+  return new ApiError("UNEXPECTED_RESPONSE", message, status);
+}
+
+function isAPIErrorResponse(value: unknown): value is APIErrorResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const maybeResponse = value as Partial<APIErrorResponse>;
+  return (
+    maybeResponse.status === "error" &&
+    !!maybeResponse.error &&
+    typeof maybeResponse.error.code === "string" &&
+    typeof maybeResponse.error.message === "string"
+  );
+}
+
+function isAPISuccessResponse<T>(value: unknown): value is APISuccessResponse<T> {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  return (value as Partial<APISuccessResponse<T>>).status === "success";
 }
 
 // --- Convenience methods ---
 
 export const api = {
-  get<T>(endpoint: string, opts?: RequestInit & { skipAuth?: boolean }) {
+  get<T>(endpoint: string, opts?: RequestOptions) {
     return request<T>(endpoint, { ...opts, method: "GET" });
   },
 
   post<T>(
     endpoint: string,
     body?: unknown,
-    opts?: RequestInit & { skipAuth?: boolean }
+    opts?: RequestOptions
   ) {
     return request<T>(endpoint, {
       ...opts,
@@ -137,7 +243,7 @@ export const api = {
   patch<T>(
     endpoint: string,
     body?: unknown,
-    opts?: RequestInit & { skipAuth?: boolean }
+    opts?: RequestOptions
   ) {
     return request<T>(endpoint, {
       ...opts,
@@ -149,7 +255,7 @@ export const api = {
   put<T>(
     endpoint: string,
     body?: unknown,
-    opts?: RequestInit & { skipAuth?: boolean }
+    opts?: RequestOptions
   ) {
     return request<T>(endpoint, {
       ...opts,
@@ -158,7 +264,7 @@ export const api = {
     });
   },
 
-  delete<T>(endpoint: string, opts?: RequestInit & { skipAuth?: boolean }) {
+  delete<T>(endpoint: string, opts?: RequestOptions) {
     return request<T>(endpoint, { ...opts, method: "DELETE" });
   },
 };

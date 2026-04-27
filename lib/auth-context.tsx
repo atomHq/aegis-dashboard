@@ -9,6 +9,7 @@ import React, {
   useMemo,
 } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   api,
   getToken,
@@ -17,7 +18,7 @@ import {
   getStoredUser,
   setStoredUser,
   ApiError,
-  suppressAuthRedirect,
+  registerAuthTeardownHandler,
 } from "./api";
 import type {
   User,
@@ -52,6 +53,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [state, setState] = useState<AuthState>({
     user: null,
     tenant: null,
@@ -60,14 +62,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: false,
   });
 
+  const resetAuthState = useCallback(() => {
+    clearToken();
+    queryClient.clear();
+    setState({
+      user: null,
+      tenant: null,
+      token: null,
+      isLoading: false,
+      isAuthenticated: false,
+    });
+  }, [queryClient]);
+
+  const teardownSession = useCallback(
+    (options?: { redirectToLogin?: boolean; expired?: boolean }) => {
+      resetAuthState();
+      if (options?.redirectToLogin) {
+        router.push(options.expired ? "/login?expired=true" : "/login");
+      }
+    },
+    [resetAuthState, router]
+  );
+
+  useEffect(() => {
+    return registerAuthTeardownHandler((options) => {
+      teardownSession({ redirectToLogin: true, expired: options?.expired });
+    });
+  }, [teardownSession]);
+
   // Initialize from localStorage
   useEffect(() => {
-    const token = getToken();
-    const storedUser = getStoredUser();
+    let isActive = true;
 
-    if (token && storedUser) {
+    async function initializeAuth() {
+      const token = getToken();
+      const storedUser = getStoredUser();
+
+      if (!token || !storedUser) {
+        if (isActive) {
+          setState((prev) => ({ ...prev, isLoading: false }));
+        }
+        return;
+      }
+
       try {
         const user = JSON.parse(storedUser) as User;
+
+        if (!isActive) {
+          return;
+        }
+
         setState({
           user,
           tenant: null,
@@ -76,88 +120,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isAuthenticated: true,
         });
 
-        // Validate token by fetching tenant
-        if (user.tenant_id) {
-          suppressAuthRedirect(true);
-          api
-            .get<Tenant>(`/api/v1/tenants/${user.tenant_id}`)
-            .then((tenant) => {
-              setState((prev) => ({
-                ...prev,
-                tenant,
-                isLoading: false,
-              }));
-            })
-            .catch(() => {
-              clearToken();
-              setState({
-                user: null,
-                tenant: null,
-                token: null,
-                isLoading: false,
-                isAuthenticated: false,
-              });
-            })
-            .finally(() => {
-              suppressAuthRedirect(false);
-            });
-        } else {
+        if (!user.tenant_id) {
           setState((prev) => ({ ...prev, isLoading: false }));
+          return;
+        }
+
+        const tenant = await api.get<Tenant>(`/api/v1/tenants/${user.tenant_id}`, {
+          onUnauthorized: "throw",
+        });
+
+        if (isActive) {
+          setState((prev) => ({
+            ...prev,
+            tenant,
+            isLoading: false,
+          }));
         }
       } catch {
-        clearToken();
-        setState({
-          user: null,
-          tenant: null,
-          token: null,
-          isLoading: false,
-          isAuthenticated: false,
-        });
+        if (isActive) {
+          teardownSession();
+        }
       }
-    } else {
-      setState((prev) => ({ ...prev, isLoading: false }));
     }
-  }, []);
+
+    void initializeAuth();
+
+    return () => {
+      isActive = false;
+    };
+  }, [teardownSession]);
 
   const login = useCallback(
     async (data: LoginRequest): Promise<LoginResponse> => {
-      suppressAuthRedirect(true);
-      try {
-        const response = await api.post<LoginResponse>(
-          "/api/v1/auth/login",
-          data,
-          { skipAuth: true }
-        );
+      const response = await api.post<LoginResponse>("/api/v1/auth/login", data, {
+        skipAuth: true,
+        onUnauthorized: "throw",
+      });
 
-        setToken(response.token);
-        setStoredUser(response.user);
+      setToken(response.token);
+      setStoredUser(response.user);
 
-        // Fetch tenant info
-        let tenant: Tenant | null = null;
-        if (response.user.tenant_id) {
-          try {
-            tenant = await api.get<Tenant>(
-              `/api/v1/tenants/${response.user.tenant_id}`
-            );
-          } catch {
-            // Non-critical - proceed without tenant
+      // Fetch tenant info
+      let tenant: Tenant | null = null;
+      if (response.user.tenant_id) {
+        try {
+          tenant = await api.get<Tenant>(
+            `/api/v1/tenants/${response.user.tenant_id}`,
+            { onUnauthorized: "throw" }
+          );
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 401) {
+            teardownSession();
+            throw error;
           }
+
+          if (!(error instanceof ApiError)) {
+            throw error;
+          }
+
+          tenant = null;
         }
-
-        setState({
-          user: response.user,
-          tenant,
-          token: response.token,
-          isLoading: false,
-          isAuthenticated: true,
-        });
-
-        return response;
-      } finally {
-        suppressAuthRedirect(false);
       }
+
+      setState({
+        user: response.user,
+        tenant,
+        token: response.token,
+        isLoading: false,
+        isAuthenticated: true,
+      });
+
+      return response;
     },
-    []
+    [teardownSession]
   );
 
   const signup = useCallback(
@@ -190,16 +225,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    clearToken();
-    setState({
-      user: null,
-      tenant: null,
-      token: null,
-      isLoading: false,
-      isAuthenticated: false,
-    });
-    router.push("/login");
-  }, [router]);
+    teardownSession({ redirectToLogin: true });
+  }, [teardownSession]);
 
   const setTenantData = useCallback((tenant: Tenant) => {
     setState((prev) => ({ ...prev, tenant }));
