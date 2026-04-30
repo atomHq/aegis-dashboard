@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   FolderKanban,
   KeyRound,
+  BookOpen,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -32,6 +33,12 @@ const navItems = [
     label: "API Keys",
     icon: KeyRound,
     id: "nav-api-keys",
+  },
+  {
+    href: "/dashboard/docs",
+    label: "Docs",
+    icon: BookOpen,
+    id: "nav-docs",
   },
   {
     href: "/dashboard/settings",

@@ -8,10 +8,26 @@ import type {
   UpdateProjectRequest,
 } from "@/lib/types";
 
-export function useProjects() {
+interface UseProjectsOptions {
+  search?: string;
+}
+
+export function useProjects(options?: UseProjectsOptions) {
+  const search = options?.search?.trim() || "";
+
   return useQuery({
-    queryKey: ["projects"],
-    queryFn: () => api.get<Project[]>("/api/v1/auth/projects?limit=100"),
+    queryKey: ["projects", search],
+    queryFn: ({ signal }) => {
+      const params = new URLSearchParams({ limit: "100" });
+      if (search) {
+        params.set("search", search);
+      }
+
+      return api.get<Project[]>(`/api/v1/auth/projects?${params.toString()}`, {
+        signal,
+      });
+    },
+    placeholderData: (previousData) => previousData,
   });
 }
 
