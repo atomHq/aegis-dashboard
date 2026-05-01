@@ -71,11 +71,15 @@ await aegis.putSecret(projectId, {
   value: "postgres://prod.example/db",
 });
 
-const secret = await aegis.getSecret(projectId, "DATABASE_URL");`,
+const secret = await aegis.getSecret(projectId, "DATABASE_URL");
+const secrets = await aegis.bulkGetSecrets(projectId, [
+  "DATABASE_URL",
+  "STRIPE_SECRET_KEY",
+]);`,
   },
   {
     name: "Python",
-    install: "pip install aegis-sdk",
+    install: "pip install git+https://github.com/atomHq/aegis-python.git",
     code: `from aegis_sdk import AegisClient
 
 aegis = AegisClient(
@@ -88,7 +92,11 @@ aegis.put_secret(project_id, {
     "value": "postgres://prod.example/db",
 })
 
-secret = aegis.get_secret(project_id, "DATABASE_URL")`,
+secret = aegis.get_secret(project_id, "DATABASE_URL")
+secrets = aegis.bulk_get_secrets(project_id, [
+    "DATABASE_URL",
+    "STRIPE_SECRET_KEY",
+])`,
   },
   {
     name: "Go",
@@ -106,7 +114,15 @@ if err != nil {
     return err
 }
 
-secret, err := client.GetSecret(ctx, projectID, "DATABASE_URL")`,
+secret, err := client.GetSecret(ctx, projectID, "DATABASE_URL")
+if err != nil {
+    return err
+}
+
+secrets, err := client.BulkGetSecrets(ctx, projectID, []string{
+    "DATABASE_URL",
+    "STRIPE_SECRET_KEY",
+})`,
   },
 ];
 
