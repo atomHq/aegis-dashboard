@@ -73,6 +73,7 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-8 text-sm text-text-secondary">
             <a href="#features" className="hover:text-text-primary transition-colors">Features</a>
             <a href="#pricing" className="hover:text-text-primary transition-colors">Pricing</a>
+            <Link href="/docs" className="hover:text-text-primary transition-colors">Docs</Link>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/login" id="landing-login" className="btn-ghost text-sm">Log In</Link>
@@ -317,7 +318,7 @@ $ curl http://localhost:8080/api/v1/projects/{id}/secrets/DATABASE_URL \\
           <div className="flex items-center gap-6 text-xs text-text-tertiary">
             <a href="#" className="hover:text-text-secondary transition-colors">Privacy</a>
             <a href="#" className="hover:text-text-secondary transition-colors">Terms</a>
-            <a href="#" className="hover:text-text-secondary transition-colors">Docs</a>
+            <Link href="/docs" className="hover:text-text-secondary transition-colors">Docs</Link>
           </div>
         </div>
       </footer>

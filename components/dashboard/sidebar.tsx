@@ -35,7 +35,7 @@ const navItems = [
     id: "nav-api-keys",
   },
   {
-    href: "/dashboard/docs",
+    href: "/docs",
     label: "Docs",
     icon: BookOpen,
     id: "nav-docs",
